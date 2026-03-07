@@ -6,7 +6,7 @@ from lib.styles.styles import COLORS
 from lib.searchiconlibrary import IconManager
 from lib.styles.search import SearchHeader
 try:
-    from .library import LibraryInfoFrame
+    from .frames.library import LibraryInfoFrame
 except ImportError:
 
     class LibraryInfoFrame(tk.Frame):
@@ -15,7 +15,7 @@ except ImportError:
             super().__init__(parent, bg=COLORS['bg_dark'])
             tk.Label(self, text='[ SYSTEM INVENTORY PAGE ]', font=('Consolas', 14), fg=COLORS['accent'], bg=COLORS['bg_dark']).pack(expand=True)
 try:
-    from .settings import SettingsFrame
+    from .frames.settings import SettingsFrame
 except ImportError:
 
     class SettingsFrame(tk.Frame):
@@ -23,6 +23,15 @@ except ImportError:
         def __init__(self, parent, colors):
             super().__init__(parent, bg=colors['bg_dark'])
             tk.Label(self, text='[ SETTINGS PAGE NOT FOUND ]', font=('Consolas', 14), fg='red', bg=colors['bg_dark']).pack(expand=True)
+try:
+    from .frames.about import AboutFrame
+except ImportError:
+
+    class AboutFrame(tk.Frame):
+
+        def __init__(self, parent, colors=COLORS):
+            super().__init__(parent, bg=colors['bg_dark'])
+            tk.Label(self, text='[ ABOUT PAGE NOT FOUND ]', font=('Consolas', 14), fg='red', bg=colors['bg_dark']).pack(expand=True)
 
 class LibraryMenu:
 
@@ -32,10 +41,7 @@ class LibraryMenu:
         self.filtered_libs = filtered_libs
         self.COLORS = COLORS
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.basename(current_dir) == 'lib':
-            self.base_dir = os.path.dirname(current_dir)
-        else:
-            self.base_dir = current_dir
+        self.base_dir = os.path.dirname(current_dir) if os.path.basename(current_dir) == 'lib' else current_dir
         self.lib_dir = os.path.join(self.base_dir, 'library')
         self.sidebar_logo_path = os.path.join(self.base_dir, 'lib', 'styles', 'icons', 'logo.png')
         self.icon_manager = IconManager(self.lib_dir)
@@ -75,11 +81,12 @@ class LibraryMenu:
         self.container.grid_columnconfigure(0, weight=1)
         self.frames = {}
         self.create_main_page()
-        self.create_about_page()
         self.frames['library'] = LibraryInfoFrame(self.container, self.lib_dir, self.filtered_libs)
         self.frames['library'].grid(row=0, column=0, sticky='nsew')
         self.frames['settings'] = SettingsFrame(self.container, self.COLORS)
         self.frames['settings'].grid(row=0, column=0, sticky='nsew')
+        self.frames['about'] = AboutFrame(self.container, self.COLORS)
+        self.frames['about'].grid(row=0, column=0, sticky='nsew')
         self.show_frame('library' if self.is_standalone else 'main')
 
     def setup_sidebar_logo(self):
@@ -158,12 +165,6 @@ class LibraryMenu:
     def update_counter(self):
         selected = sum((1 for v in self.vars.values() if v.get()))
         self.counter_label.config(text=f'SELECTED: {selected}  |  TOTAL: {len(self.filtered_libs)}')
-
-    def create_about_page(self):
-        frame = tk.Frame(self.container, bg=self.COLORS['bg_dark'])
-        self.frames['about'] = frame
-        frame.grid(row=0, column=0, sticky='nsew')
-        tk.Label(frame, text='BAYLAK MANAGER v3.0\nProfessional OSINT Toolkit', font=('Segoe UI', 16, 'bold'), fg=self.COLORS['accent'], bg=self.COLORS['bg_dark']).place(relx=0.5, rely=0.5, anchor='center')
 
     def on_confirm(self):
         self.selected_libs = [n for n, v in self.vars.items() if v.get()]
