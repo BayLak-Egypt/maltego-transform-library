@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sys
 import os
+import shutil
+import math
+from lib.msg import show_msg
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from searchiconlibrary import IconManager
 from styles.styles import COLORS
@@ -44,7 +47,7 @@ class LibraryInfoFrame(tk.Frame):
     def refresh_data(self):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
-        query = self.header.get_query()
+        query = self.header.get_query().lower() if self.header.get_query() else ''
         if not os.path.exists(self.lib_dir):
             return
         ready_names = [l['folder_name'] for l in self.filtered_libs]
@@ -73,17 +76,18 @@ class LibraryInfoFrame(tk.Frame):
         tk.Label(info_frame, text=name.upper(), font=('Consolas', 11, 'bold'), fg=self.COLORS['text_main'], bg=self.COLORS['bg_card'], anchor='w').pack(fill='x')
         tk.Label(info_frame, text=status_text, font=('Segoe UI', 8, 'bold'), fg=status_color, bg=self.COLORS['bg_card'], anchor='w').pack(fill='x')
         actions_frame = tk.Frame(card, bg=self.COLORS['bg_card'])
-        actions_frame.pack(side='right')
-        btn_del = ActionButton(actions_frame, text='UNINSTALL', colors=self.COLORS, command=lambda n=name: self.uninstall_lib(n))
-        btn_del.pack(side='right', padx=10)
+        actions_frame.pack(side='right', padx=5)
+        btn_del = ActionButton(actions_frame, text='UNINSTALL', colors=self.COLORS, btn_type='danger', width=100, height=30, command=lambda n=name: self.uninstall_lib(n))
+        btn_del.pack(side='right', padx=5)
 
     def uninstall_lib(self, folder_name):
         confirm = messagebox.askyesno('Uninstall', f"Delete '{folder_name}' permanently?")
         if confirm:
             try:
                 path = os.path.join(self.lib_dir, folder_name)
-                shutil.rmtree(path)
-                self.refresh_data()
-                messagebox.showinfo('Success', 'Deleted successfully.')
+                if os.path.exists(path):
+                    shutil.rmtree(path)
+                    self.refresh_data()
+                    show_msg(self.winfo_toplevel(), f'Deleted successfully. {folder_name} Success', type='success')
             except Exception as e:
-                messagebox.showerror('Error', f'Could not delete: {e}')
+                show_msg(self.winfo_toplevel(), f'Could not delete: {e}  Error', type='error')

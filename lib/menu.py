@@ -75,6 +75,14 @@ class LibraryMenu:
         tk.Button(self.sidebar, text='INVENTORY', command=lambda: self.show_frame('library'), **btn_style).pack(fill='x')
         tk.Button(self.sidebar, text='SETTINGS', command=lambda: self.show_frame('settings'), **btn_style).pack(fill='x')
         tk.Button(self.sidebar, text='ABOUT', command=lambda: self.show_frame('about'), **btn_style).pack(fill='x')
+        try:
+            import addmylibrary
+            self.bottom_container = tk.Frame(self.sidebar, bg=self.COLORS['sidebar'])
+            self.bottom_container.pack(side='bottom', fill='x', pady=20)
+            self.my_custom_widget = addmylibrary.create_box(self.bottom_container)
+            self.my_custom_widget.pack(padx=10)
+        except Exception as e:
+            print(f'Error loading addmylibrary: {e}')
         self.container = tk.Frame(self.root, bg=self.COLORS['bg_dark'])
         self.container.pack(side='right', fill='both', expand=True)
         self.container.grid_rowconfigure(0, weight=1)
