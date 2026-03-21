@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-SECTION_NAME = 'TRANSFORM REPOSITORY MANAGER SERVERS'
+SECTION_NAME = '● TRANSFORM REPOSITORY MANAGER SERVERS'
 
 class SettingsFrame(tk.Frame):
 

@@ -27,7 +27,6 @@ class LibrarySection(tk.Frame):
         self.is_remote = is_remote
         self.full_data = []
         self.icon_cache = {}
-        self.section_color = color
         self._is_loading = False
         header = tk.Frame(self, bg=self.COLORS['bg_card'])
         header.pack(fill='x', pady=(0, 2))
@@ -52,8 +51,7 @@ class LibrarySection(tk.Frame):
         self.loading_overlay = tk.Frame(self.content_wrapper, bg=self.COLORS['bg_dark'])
         self.style_name = f'{title.replace(' ', '')}.Horizontal.TProgressbar'
         style = ttk.Style()
-        style.theme_use('default')
-        style.configure(self.style_name, thickness=2, troughcolor=self.COLORS['bg_dark'], background=color, bordercolor=self.COLORS['bg_dark'])
+        style.configure(self.style_name, thickness=2, troughcolor=self.COLORS['bg_dark'], background=color)
         self.status_lbl = tk.Label(self.loading_overlay, text='⚡ SYNCING DATA', font=('Consolas', 8, 'bold'), fg=color, bg=self.COLORS['bg_dark'])
         self.status_lbl.place(relx=0.5, rely=0.45, anchor='center')
         self.progress = ttk.Progressbar(self.loading_overlay, orient='horizontal', length=150, mode='indeterminate', style=self.style_name)
@@ -71,7 +69,7 @@ class LibrarySection(tk.Frame):
             self.filter_display()
 
     def update_data(self, data_list):
-        self.full_data = data_list if data_list is not None else []
+        self.full_data = data_list
         self.set_loading(False)
 
     def filter_display(self):
@@ -81,19 +79,20 @@ class LibrarySection(tk.Frame):
             return
         q = self.search_var.get().lower().strip()
         found_count = 0
-        for item in self.full_data:
-            if q and q not in item[0].lower():
-                continue
-            self._create_card(item)
-            found_count += 1
+        if self.full_data is not None:
+            for item in self.full_data:
+                if q and q not in item[0].lower():
+                    continue
+                self._create_card(item)
+                found_count += 1
         if found_count == 0:
             status_msg = ''
-            if self.full_data and len(self.full_data) > 0:
-                status_msg = f"🔍 NO RESULTS FOR '{q}'"
-            elif self.is_remote:
+            if self.is_remote and self.full_data is None:
                 status_msg = '❌ NO CONNECTION FOUND'
-            else:
-                return
+            elif q:
+                status_msg = f"🔍 NO RESULTS FOR '{q}'"
+            elif self.is_remote and self.full_data == []:
+                status_msg = '📂 REPOSITORY IS CURRENTLY EMPTY'
             if status_msg:
                 msg_container = tk.Frame(self.scrollable_frame, bg=self.COLORS['bg_dark'], pady=60)
                 msg_container.pack(fill='both', expand=True)
@@ -104,16 +103,14 @@ class LibrarySection(tk.Frame):
         icon_url = item[2] if len(item) > 2 else None
         card = tk.Frame(self.scrollable_frame, bg=self.COLORS['bg_card'], pady=6, padx=12)
         card.pack(fill='x', pady=1, padx=2)
+        card.lib_name = name
         icon_label = tk.Label(card, bg=self.COLORS['bg_card'], width=35)
         icon_label.pack(side='left', padx=(0, 10))
         if not self.is_remote:
-            if self.icon_manager:
-                img = self.icon_manager.get_lib_icon(name, size=(28, 28))
-                if img:
-                    icon_label.config(image=img)
-                    icon_label.image = img
-                else:
-                    icon_label.config(text='📁', font=('Segoe UI', 14), fg=self.COLORS['text_dim'])
+            img = self.icon_manager.get_lib_icon(name, (28, 28)) if self.icon_manager else None
+            if img:
+                icon_label.config(image=img)
+                icon_label.image = img
             else:
                 icon_label.config(text='📁', font=('Segoe UI', 14), fg=self.COLORS['text_dim'])
         elif icon_url and str(icon_url).startswith('http'):
@@ -124,18 +121,20 @@ class LibrarySection(tk.Frame):
         info.pack(side='left', fill='both', expand=True)
         tk.Label(info, text=name.upper(), font=('Consolas', 9, 'bold'), fg=self.COLORS['text_main'], bg=self.COLORS['bg_card'], anchor='w').pack(fill='x')
         tk.Label(info, text=status, font=('Segoe UI', 7), fg=self.COLORS['text_dim'], bg=self.COLORS['bg_card'], anchor='w').pack(fill='x')
+        btn_cmd = lambda n=name: self.on_action(n)
         if 'ActionButton' in globals():
-            ActionButton(card, text=self.btn_text, colors=self.COLORS, btn_type=self.btn_type, width=85, height=24, command=lambda n=name: self.on_action(n)).pack(side='right')
+            card.action_btn = ActionButton(card, text=self.btn_text, colors=self.COLORS, btn_type=self.btn_type, width=85, height=24, command=btn_cmd)
+            card.action_btn.pack(side='right')
         else:
-            tk.Button(card, text=self.btn_text, command=lambda n=name: self.on_action(n), bg=self.COLORS['bg_dark'], fg=self.COLORS['text_main'], relief='flat', padx=10).pack(side='right')
+            card.action_btn = tk.Button(card, text=self.btn_text, command=btn_cmd, bg=self.COLORS['bg_dark'], fg=self.COLORS['text_main'], relief='flat', padx=10)
+            card.action_btn.pack(side='right')
 
     def _load_remote_icon(self, label, url, name):
         try:
-            r = requests.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}, verify=False)
+            r = requests.get(url, timeout=3, verify=False)
             if r.status_code == 200:
                 img = Image.open(BytesIO(r.content)).convert('RGBA').resize((28, 28), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                self.icon_cache[name] = photo
                 if label.winfo_exists():
                     label.after(0, lambda: self._apply_icon(label, photo))
         except:
@@ -154,7 +153,11 @@ class LibraryInfoFrame(tk.Frame):
         self.lib_dir = lib_dir
         self.engine = ServerEngine()
         self.link_mgr = LinkManager('links.txt')
-        self.icon_manager = IconManager(self.lib_dir) if 'IconManager' in globals() else None
+        try:
+            from searchiconlibrary import IconManager
+            self.icon_manager = IconManager(self.lib_dir)
+        except ImportError:
+            self.icon_manager = None
         self.lib_sources = {}
         self.servers_list = {}
         self.create_widgets()
@@ -182,30 +185,29 @@ class LibraryInfoFrame(tk.Frame):
 
     def refresh_cloud(self):
         self.global_section.set_loading(True)
+        selection = self.server_combo.get()
 
-        def task():
-            selection = self.server_combo.get()
+        def task(selected_val):
             all_cloud_libs = []
-            targets = self.link_mgr.filter_targets(self.servers_list, selection)
+            targets = self.link_mgr.filter_targets(self.servers_list, selected_val)
+            if not targets:
+                self.after(0, lambda: self.global_section.update_data([]))
+                return
             for title, info in targets:
                 d_name, url = (info['driver'], info['url'])
-                if d_name in self.engine.drivers:
-                    try:
-                        libs = self.engine.drivers[d_name].fetch_data(url)
-                        for item in libs:
-                            all_cloud_libs.append(item)
-                            self.lib_sources[item[0]] = (d_name, url)
-                    except Exception as e:
-                        print(f'Error connecting to {title}: {e}')
-            local_folders = set()
-            if os.path.exists(self.lib_dir):
-                local_folders = {d for d in os.listdir(self.lib_dir) if os.path.isdir(os.path.join(self.lib_dir, d))}
-            final_list = [x for x in all_cloud_libs if x[0] not in local_folders]
-            self.after(0, lambda: self.global_section.update_data(final_list))
-        threading.Thread(target=task, daemon=True).start()
+                libs = self.engine.fetch_data(d_name, url)
+                if libs:
+                    for item in libs:
+                        all_cloud_libs.append(item)
+                        self.lib_sources[item[0]] = (d_name, url)
+            local_exists = {d for d in os.listdir(self.lib_dir) if os.path.isdir(os.path.join(self.lib_dir, d))} if os.path.exists(self.lib_dir) else set()
+            final_data = [x for x in all_cloud_libs if x[0] not in local_exists]
+            if not all_cloud_libs and targets:
+                final_data = None
+            self.after(0, lambda: self.global_section.update_data(final_data))
+        threading.Thread(target=task, args=(selection,), daemon=True).start()
 
     def refresh_local(self):
-        self.local_section.set_loading(True)
 
         def task():
             if not os.path.exists(self.lib_dir):
@@ -221,24 +223,59 @@ class LibraryInfoFrame(tk.Frame):
     def start_install(self, name):
         if name not in self.lib_sources:
             return
-        self.global_section.set_loading(True)
+        target_card = None
+        for card in self.global_section.scrollable_frame.winfo_children():
+            if hasattr(card, 'lib_name') and card.lib_name == name:
+                if hasattr(card.action_btn, 'start_loading'):
+                    card.action_btn.start_loading()
+                    target_card = card
+                break
         d_name, url = self.lib_sources[name]
 
-        def download():
+        def update_progress_in_ui(p):
+            if target_card and target_card.winfo_exists():
+                btn = target_card.action_btn
+                if btn.winfo_exists() and hasattr(btn, 'update_progress'):
+                    self.after(0, lambda val=p: self._safe_update_btn(btn, val))
+
+        def download_thread():
             try:
-                success = self.engine.drivers[d_name].install_data(name, url, os.path.join(self.lib_dir, name))
+                save_path = os.path.join(self.lib_dir, name)
+                success = self.engine.install_data(d_name, name, url, save_path, callback=update_progress_in_ui)
                 if success:
-                    self.after(0, lambda: [show_msg(self.winfo_toplevel(), f'Success: {name}', type='success'), self.refresh_all()])
+                    self.after(0, lambda: self._finalize_install(name))
                 else:
-                    raise Exception()
-            except:
-                self.after(0, lambda: self.global_section.set_loading(False))
-        threading.Thread(target=download, daemon=True).start()
+                    raise Exception('Connection Failed')
+            except Exception as e:
+                self.after(0, lambda: self._handle_install_error(name, target_card))
+        threading.Thread(target=download_thread, daemon=True).start()
+
+    def _safe_update_btn(self, btn, val):
+        try:
+            if btn.winfo_exists():
+                btn.update_progress(val)
+        except:
+            pass
+
+    def _handle_install_error(self, name, card):
+        if card and card.winfo_exists() and hasattr(card.action_btn, 'stop_loading'):
+            card.action_btn.stop_loading()
+        show_msg(self.winfo_toplevel(), f'Connection Error: Check Proxy Settings', type='danger')
+
+    def _finalize_install(self, name):
+        if self.global_section.full_data:
+            self.global_section.full_data = [i for i in self.global_section.full_data if i[0] != name]
+        self.after(300, self._refresh_ui_after_install)
+
+    def _refresh_ui_after_install(self):
+        self.global_section.filter_display()
+        self.refresh_local()
+        show_msg(self.winfo_toplevel(), 'Successfully Installed', type='success')
 
     def uninstall_lib(self, name):
-        if messagebox.askyesno('Confirm', f'Delete {name}?'):
+        if messagebox.askyesno('Confirm', f'Uninstall {name}?'):
             try:
                 shutil.rmtree(os.path.join(self.lib_dir, name))
                 self.refresh_all()
             except Exception as e:
-                messagebox.showerror('Error', str(e))
+                messagebox.showerror('Error', f'Uninstall failed: {e}')

@@ -6,7 +6,7 @@ import math
 from lib.styles.styles import COLORS
 
 class AboutFrame(tk.Frame):
-    SOCIAL_URL = 'https://raw.githubusercontent.com/BayLak-Egypt/my-website/refs/heads/main/mysocial.txt'
+    SOCIAL_URL = 'https://baylak-egypt.github.io/mysocial.txt'
     ICON_SIZE = 24
     HOVER_SCALE = 1.25
 
