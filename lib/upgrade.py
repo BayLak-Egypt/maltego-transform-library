@@ -12,12 +12,12 @@ def get_remote_files():
     api_url = f'https://api.github.com/repos/{USER}/{REPO}/git/trees/{BRANCH}?recursive=1'
     try:
         session = proxy_mgr.get_session()
-        response = session.get(api_url, timeout=15, verify=False)
+        response = session.get(api_url, timeout=10, verify=False)
         if response.status_code == 200:
             data = response.json()
             return [f for f in data.get('tree', []) if f['type'] == 'blob']
-    except Exception as e:
-        print(f'Connection Error: {e}')
+    except Exception:
+        pass
     return []
 
 def sync_file(item):
