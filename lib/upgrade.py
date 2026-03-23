@@ -2,6 +2,8 @@ import os
 import json
 import urllib.request
 import hashlib
+import sys
+import importlib
 USER = 'BayLak-Egypt'
 REPO = 'maltego-transform-library'
 BRANCH = 'main'
@@ -21,15 +23,21 @@ def sync_file(item):
     raw_url = f'https://raw.githubusercontent.com/{USER}/{REPO}/{BRANCH}/{path}'
     if os.path.dirname(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
+    update_needed = True
     if os.path.exists(path):
         with open(path, 'rb') as f:
             content = f.read()
             header = f'blob {len(content)}\x00'.encode('utf-8')
             local_sha = hashlib.sha1(header + content).hexdigest()
         if local_sha == remote_sha:
+            update_needed = False
+    if update_needed:
+        try:
+            urllib.request.urlretrieve(raw_url, path)
+            module_name = path.replace('/', '.').replace('\\', '.').replace('.py', '')
+            if module_name in sys.modules:
+                importlib.reload(sys.modules[module_name])
+            return True
+        except:
             return False
-    try:
-        urllib.request.urlretrieve(raw_url, path)
-        return True
-    except:
-        return False
+    return False
