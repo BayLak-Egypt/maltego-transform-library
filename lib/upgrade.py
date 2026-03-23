@@ -3,7 +3,6 @@ import json
 import urllib.request
 import hashlib
 import sys
-
 USER = 'BayLak-Egypt'
 REPO = 'maltego-transform-library'
 BRANCH = 'main'
@@ -21,10 +20,8 @@ def sync_file(item):
     path = item['path']
     remote_sha = item['sha']
     raw_url = f'https://raw.githubusercontent.com/{USER}/{REPO}/{BRANCH}/{path}'
-    
     if os.path.dirname(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-    
     update_needed = True
     if os.path.exists(path):
         with open(path, 'rb') as f:
@@ -33,23 +30,18 @@ def sync_file(item):
             local_sha = hashlib.sha1(header + content).hexdigest()
         if local_sha == remote_sha:
             update_needed = False
-            
     if update_needed:
         try:
             urllib.request.urlretrieve(raw_url, path)
-            # تم إزالة importlib.reload لمنع الـ Restart المتكرر 
-            # لأن main.py سيقوم بهذه المهمة عند استشعار تغيير الملفات
             return True
         except:
             return False
     return False
 
 def start_sync():
-    """هذه هي الدالة التي سيطلبها ملف الواجهة"""
     files = get_remote_files()
     if not files:
         return False
-    
     any_updated = False
     for f in files:
         if sync_file(f):
