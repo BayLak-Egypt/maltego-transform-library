@@ -16,7 +16,7 @@ def get_remote_files():
         if response.status_code == 200:
             data = response.json()
             return [f for f in data.get('tree', []) if f['type'] == 'blob']
-    except Exception:
+    except:
         pass
     return []
 
@@ -30,8 +30,9 @@ def sync_file(item):
         try:
             with open(path, 'rb') as f:
                 content = f.read()
-                header = f'blob {len(content)}\x00'.encode('utf-8')
-                local_sha = hashlib.sha1(header + content).hexdigest()
+                clean_content = content.replace(b'\r\n', b'\n')
+                header = f'blob {len(clean_content)}\x00'.encode('utf-8')
+                local_sha = hashlib.sha1(header + clean_content).hexdigest()
             if local_sha == remote_sha:
                 return False
         except:
@@ -40,8 +41,9 @@ def sync_file(item):
         session = proxy_mgr.get_session()
         r = session.get(raw_url, timeout=15, verify=False)
         if r.status_code == 200:
+            new_content = r.content.replace(b'\r\n', b'\n')
             with open(path, 'wb') as f:
-                f.write(r.content)
+                f.write(new_content)
             return True
     except:
         pass
