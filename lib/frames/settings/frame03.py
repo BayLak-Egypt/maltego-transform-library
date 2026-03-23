@@ -36,7 +36,7 @@ class SettingsFrame(tk.Frame):
         with open(self.settings_file, 'w', encoding='utf-8') as f:
             json.dump(settings, f, indent=4)
         if self.auto_update.get():
-            did_update = upgrades.start_sync()
+            did_update = upgrade.start_sync()
             if did_update:
                 messagebox.showinfo('Update Success', 'Program has been updated!')
             else:
