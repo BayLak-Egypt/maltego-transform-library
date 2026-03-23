@@ -21,17 +21,18 @@ class ProxyManager:
         session = requests.Session()
         session.trust_env = False
         settings = self.get_settings()
+        
         if settings.get('enabled'):
-            p_url = f'socks5h://{settings.get('ip')}:{settings.get('port')}'
+            p_url = f"socks5h://{settings.get('ip')}:{settings.get('port')}"
             session.proxies = {'http': p_url, 'https': p_url}
             session.timeout = 15
-            print(f'DEBUG: Proxy is ON -> {p_url}')
         else:
             session.proxies = {}
             session.timeout = 20
-            print('DEBUG: Proxy is OFF -> Direct Connection')
+            
         adapter = HTTPAdapter(max_retries=Retry(total=2))
         session.mount('http://', adapter)
         session.mount('https://', adapter)
         return session
+
 proxy_mgr = ProxyManager()
