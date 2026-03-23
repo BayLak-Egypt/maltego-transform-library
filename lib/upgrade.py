@@ -1,5 +1,4 @@
 import os
-import json
 import hashlib
 import requests
 import urllib3
@@ -18,7 +17,7 @@ def get_remote_files():
             data = response.json()
             return [f for f in data.get('tree', []) if f['type'] == 'blob']
     except Exception as e:
-        print(f'⚠️ Proxy/Network Error: {e}')
+        print(f'Connection Error: {e}')
     return []
 
 def sync_file(item):
@@ -27,23 +26,23 @@ def sync_file(item):
     raw_url = f'https://raw.githubusercontent.com/{USER}/{REPO}/{BRANCH}/{path}'
     if os.path.dirname(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-    update_needed = True
     if os.path.exists(path):
-        with open(path, 'rb') as f:
-            content = f.read()
-            header = f'blob {len(content)}\x00'.encode('utf-8')
-            local_sha = hashlib.sha1(header + content).hexdigest()
-        if local_sha == remote_sha:
-            update_needed = False
-    if update_needed:
         try:
-            session = proxy_mgr.get_session()
-            response = session.get(raw_url, stream=True, verify=False, timeout=20)
-            if response.status_code == 200:
-                with open(path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                return True
+            with open(path, 'rb') as f:
+                content = f.read()
+                header = f'blob {len(content)}\x00'.encode('utf-8')
+                local_sha = hashlib.sha1(header + content).hexdigest()
+            if local_sha == remote_sha:
+                return False
         except:
-            return False
-    return None
+            pass
+    try:
+        session = proxy_mgr.get_session()
+        r = session.get(raw_url, timeout=15, verify=False)
+        if r.status_code == 200:
+            with open(path, 'wb') as f:
+                f.write(r.content)
+            return True
+    except:
+        pass
+    return False
