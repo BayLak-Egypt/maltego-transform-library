@@ -2,7 +2,6 @@ import os
 import json
 import urllib.request
 import hashlib
-import sys
 USER = 'BayLak-Egypt'
 REPO = 'maltego-transform-library'
 BRANCH = 'main'
@@ -13,7 +12,7 @@ def get_remote_files():
         with urllib.request.urlopen(api_url, timeout=5) as r:
             data = json.loads(r.read().decode())
             return [f for f in data.get('tree', []) if f['type'] == 'blob']
-    except Exception:
+    except:
         return []
 
 def sync_file(item):
@@ -37,13 +36,3 @@ def sync_file(item):
         except:
             return False
     return False
-
-def start_sync():
-    files = get_remote_files()
-    if not files:
-        return False
-    any_updated = False
-    for f in files:
-        if sync_file(f):
-            any_updated = True
-    return any_updated
