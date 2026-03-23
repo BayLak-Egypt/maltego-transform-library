@@ -1,9 +1,10 @@
 import os
 import json
-import urllib.request
 import hashlib
-import sys
-import importlib
+import requests
+import urllib3
+from lib.proxy import proxy_mgr
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 USER = 'BayLak-Egypt'
 REPO = 'maltego-transform-library'
 BRANCH = 'main'
@@ -11,11 +12,16 @@ BRANCH = 'main'
 def get_remote_files():
     api_url = f'https://api.github.com/repos/{USER}/{REPO}/git/trees/{BRANCH}?recursive=1'
     try:
-        with urllib.request.urlopen(api_url, timeout=5) as r:
-            data = json.loads(r.read().decode())
+        session = proxy_mgr.get_session()
+        response = session.get(api_url, timeout=15, verify=False)
+        if response.status_code == 200:
+            data = response.json()
             return [f for f in data.get('tree', []) if f['type'] == 'blob']
-    except Exception:
-        return []
+        else:
+            print(f'⚠️ GitHub API Error: {response.status_code}')
+    except Exception as e:
+        print(f'⚠️ Proxy/Network Error: {e}')
+    return []
 
 def sync_file(item):
     path = item['path']
@@ -25,19 +31,31 @@ def sync_file(item):
         os.makedirs(os.path.dirname(path), exist_ok=True)
     update_needed = True
     if os.path.exists(path):
-        with open(path, 'rb') as f:
-            content = f.read()
-            header = f'blob {len(content)}\x00'.encode('utf-8')
-            local_sha = hashlib.sha1(header + content).hexdigest()
-        if local_sha == remote_sha:
-            update_needed = False
+        try:
+            with open(path, 'rb') as f:
+                content = f.read()
+                header = f'blob {len(content)}\x00'.encode('utf-8')
+                local_sha = hashlib.sha1(header + content).hexdigest()
+            if local_sha == remote_sha:
+                update_needed = False
+        except Exception:
+            update_needed = True
+    else:
+        update_needed = True
     if update_needed:
         try:
-            urllib.request.urlretrieve(raw_url, path)
-            module_name = path.replace('/', '.').replace('\\', '.').replace('.py', '')
-            if module_name in sys.modules:
-                importlib.reload(sys.modules[module_name])
-            return True
-        except:
+            session = proxy_mgr.get_session()
+            response = session.get(raw_url, stream=True, verify=False, timeout=20)
+            if response.status_code == 200:
+                with open(path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                return True
+            else:
+                print(f'⚠️ Failed to download {path}. Status code: {response.status_code}')
+                return False
+        except Exception as e:
+            print(f'⚠️ Connection Error while syncing {path}: {e}')
             return False
     return False
