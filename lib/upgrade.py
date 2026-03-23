@@ -16,22 +16,20 @@ def get_remote_files():
         return []
 
 def sync_file(item):
-    raw_url = f'https://raw.githubusercontent.com/{USER}/{REPO}/{BRANCH}/{item['path']}'
     path = item['path']
+    remote_sha = item['sha']
+    raw_url = f'https://raw.githubusercontent.com/{USER}/{REPO}/{BRANCH}/{path}'
     if os.path.dirname(path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-    update = True
     if os.path.exists(path):
         with open(path, 'rb') as f:
             content = f.read()
-            header = f'blob {len(content)}\x00'.encode()
+            header = f'blob {len(content)}\x00'.encode('utf-8')
             local_sha = hashlib.sha1(header + content).hexdigest()
-        if local_sha == item['sha']:
-            update = False
-    if update:
-        try:
-            urllib.request.urlretrieve(raw_url, path)
-            return True
-        except:
+        if local_sha == remote_sha:
             return False
-    return True
+    try:
+        urllib.request.urlretrieve(raw_url, path)
+        return True
+    except:
+        return False
