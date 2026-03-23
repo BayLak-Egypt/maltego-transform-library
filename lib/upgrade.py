@@ -30,9 +30,9 @@ def sync_file(item):
         try:
             with open(path, 'rb') as f:
                 content = f.read()
-                clean_content = content.replace(b'\r\n', b'\n')
-                header = f'blob {len(clean_content)}\x00'.encode('utf-8')
-                local_sha = hashlib.sha1(header + clean_content).hexdigest()
+                content = content.replace(b'\r\n', b'\n')
+                header = f'blob {len(content)}\x00'.encode('utf-8')
+                local_sha = hashlib.sha1(header + content).hexdigest()
             if local_sha == remote_sha:
                 return False
         except:
