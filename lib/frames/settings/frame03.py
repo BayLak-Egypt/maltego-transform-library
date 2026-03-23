@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import json
 import os
-import lib.upgrades as upgrades
+import lib.upgrade as upgrade
 
 class SettingsFrame(tk.Frame):
 
