@@ -12,10 +12,9 @@ def get_remote_files():
     api_url = f'https://api.github.com/repos/{USER}/{REPO}/git/trees/{BRANCH}?recursive=1'
     try:
         session = proxy_mgr.get_session()
-        response = session.get(api_url, timeout=10, verify=False)
-        if response.status_code == 200:
-            data = response.json()
-            return [f for f in data.get('tree', []) if f['type'] == 'blob']
+        r = session.get(api_url, timeout=10, verify=False)
+        if r.status_code == 200:
+            return [f for f in r.json().get('tree', []) if f['type'] == 'blob']
     except:
         pass
     return []
@@ -30,7 +29,6 @@ def sync_file(item):
         try:
             with open(path, 'rb') as f:
                 content = f.read()
-                content = content.replace(b'\r\n', b'\n')
                 header = f'blob {len(content)}\x00'.encode('utf-8')
                 local_sha = hashlib.sha1(header + content).hexdigest()
             if local_sha == remote_sha:
@@ -41,9 +39,8 @@ def sync_file(item):
         session = proxy_mgr.get_session()
         r = session.get(raw_url, timeout=15, verify=False)
         if r.status_code == 200:
-            new_content = r.content.replace(b'\r\n', b'\n')
             with open(path, 'wb') as f:
-                f.write(new_content)
+                f.write(r.content)
             return True
     except:
         pass

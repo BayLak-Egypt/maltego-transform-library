@@ -14,24 +14,19 @@ def start_loader(tasks, mode='gui'):
         except:
             pass
     if not auto_update:
-        if mode == 'gui':
-            start_gui_loader(tasks)
-        else:
-            run_terminal_loader(tasks)
-        return
+        return start_gui_loader(tasks) if mode == 'gui' else run_terminal_loader(tasks)
     remote_files = get_remote_files()
     updated_files = []
     for item in remote_files:
         if sync_file(item):
-            file_name = os.path.basename(item['path'])
-            updated_files.append(file_name)
+            updated_files.append(os.path.basename(item['path']))
     if updated_files:
-        final_tasks = [f'Updated: {f}' for f in updated_files] + ['Finalizing & Restarting...']
+        update_tasks = [f'Updated: {f}' for f in updated_files] + ['Restarting System...']
         if mode == 'gui':
-            start_gui_loader(final_tasks)
+            start_gui_loader(update_tasks)
         else:
-            run_terminal_loader(final_tasks)
-        print('\n [!] Update found. Restarting process...')
+            run_terminal_loader(update_tasks)
+        print('\n[!] Update finished. Restarting...')
         os.execv(sys.executable, [sys.executable] + sys.argv)
     else:
         final_tasks = ['System: Up to date'] + tasks
